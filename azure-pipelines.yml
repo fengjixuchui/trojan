@@ -12,7 +12,7 @@ stages:
     - script: |
         set -euo pipefail
         echo 'target_link_libraries(trojan dl)' >> CMakeLists.txt
-        cmake -DMYSQL_INCLUDE_DIR=/usr/local/include/mariadb -DMYSQL_LIBRARY=/usr/local/lib/mariadb/libmysqlclient.a -DDEFAULT_CONFIG=config.json -DFORCE_TCP_FASTOPEN=ON .
+        cmake -DMYSQL_INCLUDE_DIR=/usr/local/include/mariadb -DMYSQL_LIBRARY=/usr/local/lib/mariadb/libmysqlclient.a -DDEFAULT_CONFIG=config.json -DFORCE_TCP_FASTOPEN=ON -DBoost_USE_STATIC_LIBS=ON .
         make
         strip -s trojan
     - publish: $(System.DefaultWorkingDirectory)/trojan
@@ -25,7 +25,7 @@ stages:
     - script: |
         set -euo pipefail
         brew install boost openssl@1.1
-        cmake -DBoost_USE_STATIC_LIBS=ON -DOPENSSL_INCLUDE_DIR=/usr/local/opt/openssl@1.1/include -DOPENSSL_CRYPTO_LIBRARY=/usr/local/opt/openssl@1.1/lib/libcrypto.a -DOPENSSL_SSL_LIBRARY=/usr/local/opt/openssl@1.1/lib/libssl.a -DDEFAULT_CONFIG=config.json -DENABLE_MYSQL=OFF .
+        cmake -DBoost_USE_STATIC_LIBS=ON -DOPENSSL_INCLUDE_DIR=/usr/local/opt/openssl@1.1/include -DOPENSSL_CRYPTO_LIBRARY=/usr/local/opt/openssl@1.1/lib/libcrypto.a -DOPENSSL_SSL_LIBRARY=/usr/local/opt/openssl@1.1/lib/libssl.a -DDEFAULT_CONFIG=config.json -DENABLE_MYSQL=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 .
         make
         strip -SXTx trojan
     - publish: $(System.DefaultWorkingDirectory)/trojan
@@ -37,9 +37,9 @@ stages:
     steps:
     - bash: |
         set -euo pipefail
-        curl -LO https://slproweb.com/download/Win64OpenSSL-1_1_1c.exe
-        powershell ".\\Win64OpenSSL-1_1_1c.exe /silent /sp- /suppressmsgboxes /DIR='C:\\Program Files\\OpenSSL-Win64'"
-        cmake -DBoost_USE_STATIC_LIBS=ON -DOPENSSL_ROOT_DIR='C:/Program Files/OpenSSL-Win64' -DOPENSSL_USE_STATIC_LIBS=ON -DENABLE_MYSQL=OFF .
+        curl -LO https://slproweb.com/download/Win64OpenSSL-1_1_1g.exe
+        powershell ".\\Win64OpenSSL-1_1_1g.exe /silent /sp- /suppressmsgboxes /DIR='C:\\Program Files\\OpenSSL-Win64'"
+        cmake -DBoost_INCLUDE_DIR="${BOOST_ROOT_1_72_0}/include" -DBoost_USE_STATIC_LIBS=ON -DOPENSSL_ROOT_DIR='C:/Program Files/OpenSSL-Win64' -DOPENSSL_USE_STATIC_LIBS=ON -DENABLE_MYSQL=OFF .
         cmake --build . --config Release
     - publish: $(System.DefaultWorkingDirectory)/Release/trojan.exe
       artifact: WindowsBinary
@@ -103,7 +103,7 @@ stages:
         cp "$BINARY" trojan/trojan
         cp -r examples CONTRIBUTORS.md LICENSE README.md trojan
         cp examples/client.json-example trojan/config.json
-        rm trojan/examples/trojan.service-example
+        rm trojan/examples/nat.json-example trojan/examples/trojan.service-example
         cat > trojan/start.command <<EOF
         #!/bin/sh
 
@@ -111,9 +111,6 @@ stages:
         ./trojan
         EOF
         chmod +x trojan/start.command
-        sed -i '' "s/\"cert\": \"\"/\"cert\": \"\/etc\/ssl\/cert.pem\"/" trojan/config.json
-        sed -i '' "s/\"cert\": \"\"/\"cert\": \"\/etc\/ssl\/cert.pem\"/" trojan/examples/client.json-example
-        sed -i '' "s/\"cert\": \"\"/\"cert\": \"\/etc\/ssl\/cert.pem\"/" trojan/examples/forward.json-example
         zip -r9 trojan-macos.zip trojan
       env:
         PIPELINE_WORKSPACE: $(Pipeline.Workspace)
@@ -133,7 +130,7 @@ stages:
         cp "$BINARY" trojan/trojan.exe
         cp -r examples CONTRIBUTORS.md LICENSE README.md trojan
         cp examples/client.json-example trojan/config.json
-        rm trojan/examples/trojan.service-example
+        rm trojan/examples/nat.json-example trojan/examples/trojan.service-example
         7z a -mx=9 trojan-win.zip trojan
       env:
         PIPELINE_WORKSPACE: $(Pipeline.Workspace)
